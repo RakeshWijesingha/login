@@ -1,13 +1,164 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.7/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Firebase configuration (replace with your actual config)
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    let auth;
+    try {
+      const app = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+    }
+
+    function App() {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [message, setMessage] = useState("");
+      const [isLoginMode, setIsLoginMode] = useState(true);
+
+      const handleLogin = async () => {
+        if (!auth) {
+          setMessage("Firebase not initialized. Check configuration.");
+          return;
+        }
+        try {
+          const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+          const user = userCredential.user;
+          const token = await user.getIdToken();
+          console.log("JWT Token:", token);
+
+          // Optional: Comment out fetch if backend isn't running
+          /*
+          const response = await fetch("http://localhost:5000/protected", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            setMessage("Login successful & token sent to backend ✅");
+          } else {
+            setMessage("Backend request failed ❌");
+          }
+          */
+          setMessage("Login successful ✅");
+        } catch (error) {
+          setMessage("Login error: " + (error.message || "Unknown error"));
+          console.error("Login error:", error);
+        }
+      };
+
+      const handleSignup = async (e) => {
+        e.preventDefault();
+        if (!auth) {
+          setMessage("Firebase not initialized. Check configuration.");
+          return;
+        }
+        try {
+          await firebase.auth().createUserWithEmailAndPassword(email, password);
+          setMessage("User created successfully 🎉");
+        } catch (error) {
+          setMessage("Signup error: " + (error.message || "Unknown error"));
+          console.error("Signup error:", error);
+        }
+      };
+
+      const toggleMode = () => {
+        setIsLoginMode(!isLoginMode);
+        setMessage("");
+        setEmail("");
+        setPassword("");
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
+              {isLoginMode ? "Welcome Back" : "Create Account"}
+            </h2>
+            <div className="mb-6">
+              <button
+                onClick={toggleMode}
+                className="w-full py-2 px-4 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                {isLoginMode ? "Need an account? Sign Up" : "Already have an account? Log In"}
+              </button>
+            </div>
+            <form onSubmit={handleSignup}>
+              <div className="mb-4">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-200"
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+              <div className="mb-6">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-200"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+              <button
+                type={isLoginMode ? "button" : "submit"}
+                onClick={isLoginMode ? handleLogin : null}
+                className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200"
+              >
+                {isLoginMode ? "Log In" : "Sign Up"}
+              </button>
+            </form>
+            {message && (
+              <p className={`mt-4 text-center text-sm ${message.includes("error") ? "text-red-500" : "text-green-500"}`}>
+                {message}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
 </html>
